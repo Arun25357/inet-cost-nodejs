@@ -14,23 +14,52 @@ router.get('/', async function(req, res, next) {
 
 router.post('/add', async function(req, res, next) {
     try {
-        let products = req.body.products.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity
-        }));
-        
+        let items = [];
+        let totalPrice = 0;
+
+        for (const item of req.body.items) {
+            // ดึงข้อมูลสินค้า
+            const product = await productSchema.findOne({ productId: item.productId });
+            if (!product) {
+                throw new Error(`Product ${item.productId} not found`);
+            }
+            if (product.productAmount < item.quantity) {
+                throw new Error(`Product ${item.productId} stock not enough`);
+            }
+            // คำนวณราคารวม
+            const price = product.productPrice * item.quantity;
+            totalPrice += price;
+
+            items.push({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: product.productPrice
+            });
+        }
+
         let order = new orderSchema({
+            orderid: req.body.orderid,
             userId: req.body.userId,
-            products: products,
-            totalAmount: req.body.totalAmount
+            items: items,
+            totalPrice: totalPrice
         });
-        
+
         await order.save();
+
+        // หัก stock สินค้า
+        for (const item of req.body.items) {
+            await productSchema.updateOne(
+                { productId: item.productId },
+                { $inc: { productAmount: -item.quantity } }
+            );
+        }
+
         res.send({ message: 'Order created successfully', order: order });
     } catch (err) {
-        res.status(500).send({ message: 'Error creating order', error: err });
+        res.status(500).send({ message: 'Error creating order', error: err.message });
     }
 });
+
 
 router.get('/:id', async function(req, res, next) {
     try {
@@ -75,3 +104,4 @@ router.delete('/delete/:id', async function(req, res, next) {
     }
 });
 
+module.exports = router;

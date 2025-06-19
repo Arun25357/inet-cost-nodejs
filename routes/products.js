@@ -27,7 +27,6 @@ router.post('/add', async function(req, res, next) {
   await product.save();
   if (!product) {
     return res.status(500).send({ message: 'Error creating product'});
-    console.error(err);
   }else {
   res.send({ message: 'Product created successfully', product: product });
 }
@@ -44,8 +43,9 @@ router.put('/update/:id', async function(req, res, next) {
     if (product) {
         res.send({ message: 'Product updated successfully', product: product });
     } else {
-        res.status(404).send({ message: 'Product not found' });
-        res.console.error(err);
+        
+        res.status(404).send({ message: 'Product not found', error: 'Product not found' });
+        
     }
 });
 
